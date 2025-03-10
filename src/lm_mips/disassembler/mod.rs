@@ -6,20 +6,27 @@
 
 mod opcode_handlers;
 
-use crate::lm_mips::disassembler::opcode_handlers::*;
-use crate::lm_mips::operands::registers::*;
-use crate::lm_mips::instruction::*;
-use crate::lm_mips::LmAddressSize;
-use crate::lm_mips::operands::*;
-use crate::lm_mips::utils::*;
+use super::disassembler::opcode_handlers::*;
+use super::operands::registers::*;
+use super::instruction::*;
+use super::LmAddressSize;
+use super::operands::*;
+use super::utils::string::*;
 
 #[derive(Debug, Copy, Clone)]
 pub struct LmDisassembler{
     pub address_size: LmAddressSize,
-    pub version: LmInstructionVersion
+    pub _version: LmInstructionVersion
 }
 
 impl LmDisassembler{
+    pub fn new_disassembler(address_size: LmAddressSize) -> LmDisassembler{
+        LmDisassembler{
+            address_size,
+            _version: LmInstructionVersion::NoVersion,
+        }
+    }
+    
     pub fn disassemble(&self, memory: u32, address: u64) -> Option<LmInstruction>{
         //Une map qui réunit tous les handlers des opcodes, il y a d'autre map dans cette map
         const OPCODE_TABLE: [fn (instruction: &mut LmInstruction) -> bool; 64] = [
@@ -35,7 +42,7 @@ impl LmDisassembler{
         let mut instruction: LmInstruction = LmInstruction{
             function: LmInstructionFunction::NoFunction,
             format: LmInstructionFormat::NoFormat,
-            string: ['\0'; 32],
+            operand_num: 0,
             is_conditional: false,
             coprocessor: match memory >> 26{
                 0x20 => LmCoprocessor::Cp0,
@@ -48,6 +55,7 @@ impl LmDisassembler{
             operand: [LmOperand::empty_operand(); 3],
             is_relative: false,
             is_region: false,
+            string: LmString::new_lmstring(),
             mnemonic_id: LmMnemonicId::NoMnemonic,
             address,
             address_size: self.address_size,
@@ -64,40 +72,68 @@ impl LmDisassembler{
         return Some(instruction)
     }
 
-    fn imm_format(instruction: &mut LmInstruction, coprocessor: LmCoprocessor) -> (){
+    fn imm_format(instruction: &mut LmInstruction, coprocessor: LmCoprocessor, rs: usize, rt: usize, imm: usize) -> (){
+        let mut hex_num: LmString = LmString::new_lmstring();
+        let comma: &str = ", ";
+
+        //Some attributes about the instruction and setting the operands
         instruction.format = LmInstructionFormat::Imm;
-        instruction.operand[0] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 16 & 0b11111).unwrap(), coprocessor);
-        instruction.operand[1] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 21 & 0b11111).unwrap(), LmCoprocessor::Cpu);
-        instruction.operand[2] = LmOperand::new_imm_opreand((instruction.machine_code & 0xffff) as u64);
+        if rs < 4{
+            instruction.operand[rs] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 21 & 0b11111).unwrap(), LmCoprocessor::Cpu);
+            instruction.operand_num += 1;
+        }
+        if rt < 4{
+            instruction.operand[rt] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 16 & 0b11111).unwrap(), coprocessor);
+            instruction.operand_num += 1;
+        }
+        if imm < 4{
+            instruction.operand[imm] = LmOperand::new_imm_opreand((instruction.machine_code & 0xffff) as u64);
+            instruction.operand_num += 1;
+        }
+
+        //Formatting the string
+        hex_num.num_to_str(instruction.operand[imm].value);
+        instruction.string.append_str(LmInstruction::get_memonic(instruction.mnemonic_id));
+        instruction.string.append_char(' ');
+
+        for i in 0..instruction.operand_num{
+            if instruction.operand[i]._get_operand_type() == LmOperandType::Reg{
+                instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[i].get_register().unwrap(), instruction.operand[i].get_coprocessor()));
+            }
+            else{
+                instruction.string.append_string(&hex_num);
+            }
+            if i < instruction.operand_num - 1{
+                instruction.string.append_str(comma);
+            }
+        }
     }
-    fn _reg_format(instruction: &mut LmInstruction) -> (){
-        instruction.format = LmInstructionFormat::Reg;
+    fn _imm_branch_str_formatting(instruction: &mut LmInstruction){
+        let mut hex_num: LmString = LmString::new_lmstring();
+
+        //Formatting the string
+        hex_num.num_to_str(instruction.operand[2].value);
+        instruction.string.append_str(LmInstruction::get_memonic(instruction.mnemonic_id));
+        instruction.string.append_char(' ');
+        instruction.string.append_str(LmInstruction::get_memonic(instruction.mnemonic_id));
+        instruction.string.append_string(&hex_num);
     }
     fn jump_format(instruction: &mut LmInstruction) -> (){
-        let mut hex_num: [char; 19] = ['\0'; 19];
-        let mnemonic: &str;
-        let mut i: usize = 0;
-        let mut j: usize = 0;
+        let mut hex_num: LmString = LmString::new_lmstring();
 
-        //Some infos about the instruction
+        //Some attributes about the instruction
         instruction.format = LmInstructionFormat::Jump;
+        instruction.operand_num = 1 ;
         instruction.is_region = true;
         instruction.function = LmInstructionFunction::BranchJump;
         instruction.operand[0] = LmOperand::new_imm_opreand((instruction.machine_code & 0x3FFFFFF) as u64);
 
         //Formatting the string
-        num_to_str(&mut hex_num, 19, instruction.operand[0].value);
-        mnemonic = LmInstruction::get_memonic(instruction.mnemonic_id);
-        for chara in mnemonic.chars(){
-            instruction.string[j] = chara;
-            j+=1;
-        }
-        instruction.string[j] = ' ';
-        while hex_num[i] != '\0'{
-            j+=1;
-            instruction.string[j] = hex_num[i];
-            i+=1;
-        }
+        hex_num.num_to_str(instruction.operand[0].value);
+        instruction.string.append_str(LmInstruction::get_memonic(instruction.mnemonic_id));
+        instruction.string.append_char(' ');
+        instruction.string.append_string(&hex_num);
+
         return;
     }
     pub fn u32_to_register(register: u32) -> Option<LmRegisters>{
@@ -108,13 +144,6 @@ impl LmDisassembler{
             24 => Some(LmRegisters::T8), 25 => Some(LmRegisters::T9), 26 => Some(LmRegisters::K0), 27 => Some(LmRegisters::K1), 28 => Some(LmRegisters::Gp), 29 => Some(LmRegisters::Sp), 30 => Some(LmRegisters::Fp), 31 => Some(LmRegisters::Ra),
             _ => None,
         }
-    }
-}
-
-pub fn new_disassembler(address_size: LmAddressSize) -> LmDisassembler{
-    LmDisassembler{
-        address_size: address_size,
-        version: LmInstructionVersion::NoVersion,
     }
 }
 

@@ -3,8 +3,9 @@
 //Jabber: rrx1c@jabber.fr
 //Github profile: https://github.com/RRx1C
 //Link to repo: https://github.com/RRx1C/lunettes-mips-rs
-use crate::lm_mips::LmAddressSize;
-use crate::lm_mips::operands::*;
+use super::LmAddressSize;
+use super::operands::*;
+use super::utils::string::LmString;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum LmInstructionFormat{
@@ -47,6 +48,7 @@ pub enum LmInstructionVersion{
 pub struct LmInstruction{
     pub address: u64,
     pub machine_code: u32,
+    pub string: LmString,
     pub mnemonic_id: LmMnemonicId,
     pub function: LmInstructionFunction,
     pub format: LmInstructionFormat,
@@ -55,9 +57,9 @@ pub struct LmInstruction{
     pub is_conditional: bool,
     pub is_relative: bool,
     pub is_region: bool,
+    pub operand_num: usize,
     pub operand: [LmOperand; 3],    //L'ordre des opérandes suit celui du format en lettre 
     pub version: LmInstructionVersion,
-    pub string: [char; 32],
 }
 
 impl LmInstruction{

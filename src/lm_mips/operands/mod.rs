@@ -47,7 +47,7 @@ impl LmOperand{
             register: register
         }
     }
-    pub fn _reg_to_string(register: LmRegisters, coprocessor: instruction::LmCoprocessor) -> &'static str{
+    pub fn get_reg_str(register: LmRegisters, coprocessor: instruction::LmCoprocessor) -> &'static str{
         static CPU_REGISTER_TABLE: [&str; 32] = [
             LM_REG_ZERO, LM_REG_AT, LM_REG_V0, LM_REG_V1, LM_REG_A0, LM_REG_A1, LM_REG_A2, LM_REG_A3,
             LM_REG_T0, LM_REG_T1, LM_REG_T2, LM_REG_T3, LM_REG_T4, LM_REG_T5, LM_REG_T6, LM_REG_T7,
@@ -77,13 +77,13 @@ impl LmOperand{
     pub fn _get_operand_type(&self) -> LmOperandType{
         self.operand_type
     }
-    pub fn _get_register(&self) -> Option<LmRegisters>{
+    pub fn get_register(&self) -> Option<LmRegisters>{
         if self.operand_type != LmOperandType::Reg{
             return None
         }
         Some(self.register)
     }
-    pub fn _get_coprocessor(&self) -> LmCoprocessor{
+    pub fn get_coprocessor(&self) -> LmCoprocessor{
         self.coprocessor
     }
 }

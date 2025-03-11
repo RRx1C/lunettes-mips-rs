@@ -62,8 +62,20 @@ impl LmString{
         if num < 0x100{
             digit_num = 2;
         }
+        else if num < 0x1000{
+            digit_num = 3;
+        }
         else if num < 0x10000{
             digit_num = 4;
+        }
+        else if num < 0x100000{
+            digit_num = 5;
+        }
+        else if num < 0x1000000{
+            digit_num = 6;
+        }
+        else if num < 0x1000000{
+            digit_num = 7;
         }
         else if num < 0x100000000{
             digit_num = 8;

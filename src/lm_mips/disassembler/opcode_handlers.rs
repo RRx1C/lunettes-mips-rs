@@ -154,73 +154,73 @@ pub fn jalx(instruction: &mut LmInstruction) -> bool{
 }
 pub fn lb(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Lb;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 2, 0, 1);
     instruction.function = LmInstructionFunction::LoadStore;
     true
 }
 pub fn lh(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Lh;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 2, 0, 1);
     instruction.function = LmInstructionFunction::LoadStore;
     true
 }
 pub fn lwl(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Lwl;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 2, 0, 1);
     instruction.function = LmInstructionFunction::LoadStore;
     true
 }
 pub fn lw(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Lw;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 2, 0, 1);
     instruction.function = LmInstructionFunction::LoadStore;
     true
 }
 pub fn lbu(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Lbu;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 2, 0, 1);
     instruction.function = LmInstructionFunction::LoadStore;
     true
 }
 pub fn lhu(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Lhu;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 2, 0, 1);
     instruction.function = LmInstructionFunction::LoadStore;
     true
 }
 pub fn lwr(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Lwr;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 2, 0, 1);
     instruction.function = LmInstructionFunction::LoadStore;
     true
 }
 pub fn sb(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Sb;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 2, 0, 1);
     instruction.function = LmInstructionFunction::LoadStore;
     true
 }
 pub fn sh(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Sh;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 2, 0, 1);
     instruction.function = LmInstructionFunction::LoadStore;
     true
 }
 pub fn swl(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Swl;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 2, 0, 1);
     instruction.function = LmInstructionFunction::LoadStore;
     true
 }
 pub fn sw(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Sw;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 2, 0, 1);
     instruction.function = LmInstructionFunction::LoadStore;
     true
 }
 pub fn swr(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Swr;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 2, 0, 1);
     instruction.function = LmInstructionFunction::LoadStore;
     true
 }
@@ -236,19 +236,19 @@ pub fn cache(instruction: &mut LmInstruction) -> bool{
 pub fn ll(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Ll;
     instruction.function = LmInstructionFunction::LoadStore;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 2, 0, 1);
     true
 }
 pub fn lwc1(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Lwc1;
     instruction.function = LmInstructionFunction::LoadStore;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cp1, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cp1, 2, 0, 1);
     true
 }
 pub fn lwc2(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Lwc2;
     instruction.function = LmInstructionFunction::LoadStore;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cp2, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cp2, 2, 0, 1);
     true
 }
 pub fn pref(instruction: &mut LmInstruction) -> bool{
@@ -263,43 +263,43 @@ pub fn pref(instruction: &mut LmInstruction) -> bool{
 pub fn ldc1(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Ldc1;
     instruction.function = LmInstructionFunction::LoadStore;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cp1, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cp1, 2, 0, 1);
     true
 }
 pub fn ldc2(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Ldc2;
     instruction.function = LmInstructionFunction::LoadStore;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cp2, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cp2, 2, 0, 1);
     true
 }
 pub fn sc(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Sc;
     instruction.function = LmInstructionFunction::LoadStore;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 2, 0, 1);
     true
 }
 pub fn swc1(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Swc1;
     instruction.function = LmInstructionFunction::LoadStore;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cp1, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cp1, 2, 0, 1);
     true
 }
 pub fn swc2(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Swc2;
     instruction.function = LmInstructionFunction::LoadStore;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cp2, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cp2, 2, 0, 1);
     true
 }
 pub fn sdc1(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Sdc1;
     instruction.function = LmInstructionFunction::LoadStore;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cp1, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cp1, 2, 0, 1);
     true
 }
 pub fn sdc2(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Sdc2;
     instruction.function = LmInstructionFunction::LoadStore;
-    LmDisassembler::imm_format(instruction, LmCoprocessor::Cp2, 1, 0, 2);
+    LmDisassembler::imm_format(instruction, LmCoprocessor::Cp2, 2, 0, 1);
     true
 }
 pub fn sll(instruction: &mut LmInstruction) -> bool{

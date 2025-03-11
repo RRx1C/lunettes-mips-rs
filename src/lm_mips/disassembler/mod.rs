@@ -96,17 +96,39 @@ impl LmDisassembler{
         instruction.string.append_str(LmInstruction::get_memonic(instruction.mnemonic_id));
         instruction.string.append_char(' ');
 
-        for i in 0..instruction.operand_num{
+        for i in 0..2{
             if instruction.operand[i]._get_operand_type() == LmOperandType::Reg{
                 instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[i].get_register().unwrap(), instruction.operand[i].get_coprocessor()));
             }
             else{
                 instruction.string.append_string(&hex_num);
             }
-            if i < instruction.operand_num - 1{
+            if i < 2 - 1{
                 instruction.string.append_str(comma);
             }
         }
+        if instruction.operand_num < 3{
+            return
+        }
+        if instruction.function != LmInstructionFunction::LoadStore{
+            instruction.string.append_str(comma);
+            if instruction.operand[2]._get_operand_type() == LmOperandType::Reg{
+                instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[2].get_register().unwrap(), instruction.operand[2].get_coprocessor()));
+            }
+            else{
+                instruction.string.append_string(&hex_num);
+            }
+            return
+        }
+
+        instruction.string.append_char('(');
+        if instruction.operand[2]._get_operand_type() == LmOperandType::Reg{
+            instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[2].get_register().unwrap(), instruction.operand[2].get_coprocessor()));
+        }
+        else{
+            instruction.string.append_string(&hex_num);
+        }
+        instruction.string.append_char(')');
     }
     fn jump_format(instruction: &mut LmInstruction) -> (){
         let mut hex_num: LmString = LmString::new_lmstring();
@@ -119,13 +141,12 @@ impl LmDisassembler{
         instruction.operand[0] = LmOperand::new_imm_opreand((instruction.machine_code & 0x3FFFFFF) as u64);
 
         //Formatting the string
-        hex_num.num_to_str(instruction.operand[0].value);
+        //If the branch/jump is relative, the string will show it's destination address instead of the offset
+        hex_num.num_to_str(instruction.operand[0].value * 0x4 + instruction.address);
         instruction.string.append_str(LmInstruction::get_memonic(instruction.mnemonic_id));
         instruction.string.append_char(' ');
         instruction.string.append_string(&hex_num);
 
-        assert!(instruction.operand[0].value != 0);
-        assert_eq!(instruction.operand_num, 1);
         return;
     }
     pub fn u32_to_register(register: u32) -> Option<LmRegisters>{

@@ -25,19 +25,6 @@ Je n'accepte pas de contribution pour le moment mais peut-être dans le futur, m
 - [x] Thread safe(qu'un thread n'est utilisé)
 - [ ] Rapide????
 - [ ] Lisible T_T
-# Installation
-
-1. Avec le code source
-
-	- Télécharger le [fichier zip](https://github.com/RRx1C/lunettes-mips-rs/blob/master/lunette-mips-rs-v010.zip)
-	- L'extraire dans le src folder de votre projet
-	- Ajouter "mod lm_mips;" dans votre code
-
-2. Avec une librairie précompilé
-	- A venir
-
-3. Avec une librairie dynamique
-	- A venir
 # Inspiration
 
 - [Zydis](https://github.com/zyantific/zydis)

@@ -1,13 +1,18 @@
-//Opcode handlers
+//Author: RR28
+//Discord: rrx1c
+//Jabber: rrx1c@jabber.fr
+//Github profile: https://github.com/RRx1C
+//Link to repo: https://github.com/RRx1C/lunettes-mips-rs
+
 use crate::lm_mips::instruction::*;
 use crate::lm_mips::operands::*;
 use crate::lm_mips::disassembler::*;
 
-//TODO: Spend more time with JR and JALR
-//TODO: Spend more time with Break
-//TODO: Pref has the Miscellaneous function and I don't know about cache, I guess it's the same as pref
-//TODO: Ya rien qui va
+//TODO special3 instructions need to be worked on
 
+//Opcode handlers
+
+//Default opcode field handlers
 pub fn j(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::J;
     LmDisassembler::jump_format(instruction);
@@ -266,22 +271,22 @@ pub fn sll(instruction: &mut LmInstruction) -> bool{
 
     instruction.mnemonic_id = LmMnemonicId::Sll;
     instruction.function = LmInstructionFunction::Computational;
-    return LmDisassembler::reg_format(instruction, 4, 1, 0, 2)
+    return LmDisassembler::reg_format(instruction, 4, 1, 0, 2, 0)
 }
 pub fn sra(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Sra;
     instruction.function = LmInstructionFunction::Computational;
-    return LmDisassembler::reg_format(instruction, 4, 1, 0, 2)
+    return LmDisassembler::reg_format(instruction, 4, 1, 0, 2, 0)
 }
 pub fn sllv(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Sllv;
     instruction.function = LmInstructionFunction::Computational;
-    return LmDisassembler::reg_format(instruction, 2, 1, 0, 4)
+    return LmDisassembler::reg_format(instruction, 2, 1, 0, 4, 0)
 }
 pub fn srav(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic_id = LmMnemonicId::Srav;
     instruction.function = LmInstructionFunction::Computational;
-    return LmDisassembler::reg_format(instruction, 2, 1, 0, 4)
+    return LmDisassembler::reg_format(instruction, 2, 1, 0, 4, 0)
 }
 pub fn jr(instruction: &mut LmInstruction) -> bool{
     instruction.format = LmInstructionFormat::Reg;
@@ -334,13 +339,13 @@ pub fn movz(instruction: &mut LmInstruction) -> bool{
     instruction.function = LmInstructionFunction::Miscellaneous;
     instruction.is_conditional = true;
     instruction.mnemonic_id = LmMnemonicId::Movz;
-    return LmDisassembler::reg_format(instruction, 1, 2, 0, 4)
+    return LmDisassembler::reg_format(instruction, 1, 2, 0, 4, 0)
 }
 pub fn movn(instruction: &mut LmInstruction) -> bool{
     instruction.function = LmInstructionFunction::Miscellaneous;
     instruction.is_conditional = true;
     instruction.mnemonic_id = LmMnemonicId::Movn;
-    return LmDisassembler::reg_format(instruction, 1, 2, 0, 4)
+    return LmDisassembler::reg_format(instruction, 1, 2, 0, 4, 0)
 }
 pub fn syscall(instruction: &mut LmInstruction) -> bool{
     let mut hex_num: LmString = LmString::new_lmstring();
@@ -379,12 +384,124 @@ pub fn sync(instruction: &mut LmInstruction) -> bool{
     instruction.format = LmInstructionFormat::Other;
     instruction.mnemonic_id = LmMnemonicId::Sync;
     instruction.operand[0] = LmOperand::new_imm_opreand(((instruction.machine_code >> 6) & 0xFFFFF) as u64);
-    return LmDisassembler::reg_format(instruction, 4, 4, 4, 0)
+    return LmDisassembler::reg_format(instruction, 4, 4, 4, 0, 0)
 }
 
 //Special2
 pub fn madd(instruction: &mut LmInstruction) -> bool{
     instruction.function = LmInstructionFunction::Computational;
     instruction.mnemonic_id = LmMnemonicId::Madd;
-    LmDisassembler::reg_format(instruction, 0, 1, 4, 4)
+    LmDisassembler::reg_format(instruction, 0, 1, 4, 4, 0)
+}
+pub fn maddu(instruction: &mut LmInstruction) -> bool{
+    instruction.function = LmInstructionFunction::Computational;
+    instruction.mnemonic_id = LmMnemonicId::Maddu;
+    LmDisassembler::reg_format(instruction, 0, 1, 4, 4, 0)
+}
+pub fn mul(instruction: &mut LmInstruction) -> bool{
+    instruction.function = LmInstructionFunction::Computational;
+    instruction.mnemonic_id = LmMnemonicId::Mul;
+    LmDisassembler::reg_format(instruction, 1, 2, 0, 4, 0)
+}
+pub fn msub(instruction: &mut LmInstruction) -> bool{
+    instruction.function = LmInstructionFunction::Computational;
+    instruction.mnemonic_id = LmMnemonicId::Msub;
+    LmDisassembler::reg_format(instruction, 0, 1, 4, 4, 0)
+}
+pub fn msubu(instruction: &mut LmInstruction) -> bool{
+    instruction.function = LmInstructionFunction::Computational;
+    instruction.mnemonic_id = LmMnemonicId::Msubu;
+    LmDisassembler::reg_format(instruction, 0, 1, 4, 4, 0)
+}
+pub fn clz(instruction: &mut LmInstruction) -> bool{
+    if (instruction.machine_code >> 6 & 0b11111) != 0{
+        return false
+    }
+
+    instruction.function = LmInstructionFunction::Computational;
+    instruction.mnemonic_id = LmMnemonicId::Clz;
+
+    let success = LmDisassembler::reg_format(instruction, 0, 4, 1, 4, 4);
+
+    instruction.operand[2] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 16 & 0b11111).unwrap(), LmCoprocessor::Cpu);
+    instruction.operand_num += 1;
+    
+    return success
+}
+pub fn clo(instruction: &mut LmInstruction) -> bool{
+    if (instruction.machine_code >> 6 & 0b11111) != 0{
+        return false
+    }
+
+    instruction.function = LmInstructionFunction::Computational;
+    instruction.mnemonic_id = LmMnemonicId::Clo;
+
+    let success = LmDisassembler::reg_format(instruction, 0, 4, 1, 4, 4);
+
+    instruction.operand[2] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 16 & 0b11111).unwrap(), LmCoprocessor::Cpu);
+    instruction.operand_num += 1;
+    
+    return success
+}
+pub fn sdbbp(instruction: &mut LmInstruction) -> bool{
+    let mut hex_num: LmString = LmString::new_lmstring();
+
+    instruction.operand[0] = LmOperand::new_imm_opreand(((instruction.machine_code >> 6) & 0xFFFFF) as u64);
+    hex_num.num_to_str(instruction.operand[0].value);
+    instruction.mnemonic_id = LmMnemonicId::Sdbbp;
+    instruction.function = LmInstructionFunction::Miscellaneous;
+    instruction.format = LmInstructionFormat::Other;
+
+    instruction.string.append_str(LmInstruction::get_memonic(instruction.mnemonic_id));
+    instruction.string.append_char(' ');
+    instruction.string.append_string(&hex_num);
+    true
+}
+
+//Special3 They need some testing
+pub fn ext(instruction: &mut LmInstruction) -> bool{
+    instruction.mnemonic_id = LmMnemonicId::Ext;
+    unimplemented!("[-]This handler isn't implemented yet");
+}
+pub fn ins(instruction: &mut LmInstruction) -> bool{
+    let mut hex_num: LmString = LmString::new_lmstring();
+
+    instruction.function = LmInstructionFunction::Miscellaneous;
+    instruction.mnemonic_id = LmMnemonicId::Ins;
+    instruction.format = LmInstructionFormat::Reg;
+
+    instruction.operand_num = 4;
+    instruction.operand[1] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 21 & 0b11111).unwrap(), LmCoprocessor::Cpu);
+    instruction.operand[3] = LmOperand::new_imm_opreand((instruction.machine_code >> 11 & 0b11111) as u64);
+    instruction.operand[0] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 16 & 0b11111).unwrap(), LmCoprocessor::Cpu);
+    instruction.operand[2] = LmOperand::new_imm_opreand((instruction.machine_code >> 6 & 0b11111) as u64);
+    
+    hex_num.num_to_str(instruction.operand[2].value);
+
+    instruction.string.append_str(LmInstruction::get_memonic(instruction.mnemonic_id));
+    instruction.string.append_char(' ');
+    instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[0].get_register().unwrap(), instruction.operand[0].get_coprocessor()));
+    instruction.string.append_str(", ");
+    instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[1].get_register().unwrap(), instruction.operand[1].get_coprocessor()));
+    instruction.string.append_str(", ");
+    instruction.string.append_string(&hex_num);
+    instruction.string.append_str(", ");
+    hex_num.num_to_str(instruction.operand[3].value);
+    instruction.string.append_string(&hex_num);
+    false
+}
+pub fn bshfl(instruction: &mut LmInstruction) -> bool{
+    match instruction.machine_code & 0b11111000000{
+        0b00010 => instruction.mnemonic_id = LmMnemonicId::Wsbh,
+        0b10000 => instruction.mnemonic_id = LmMnemonicId::Seb,
+        0b11000 => instruction.mnemonic_id = LmMnemonicId::Seh,
+        _ => return false
+    }
+    instruction.function = LmInstructionFunction::Computational;
+    LmDisassembler::reg_format(instruction, 4, 1, 0, 4, 1)
+}
+pub fn rdhwr(instruction: &mut LmInstruction) -> bool{
+    instruction.function = LmInstructionFunction::Miscellaneous;
+    instruction.mnemonic_id = LmMnemonicId::Rdhwr;
+    return LmDisassembler::reg_format(instruction, 4, 0, 1, 4, 0)
 }

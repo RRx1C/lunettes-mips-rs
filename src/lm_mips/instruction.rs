@@ -50,7 +50,9 @@ pub enum LmMnemonicId {
     Nop, Sll, Sra, Sllv, Srav, Jr, Jrhb, Jalr, Jalrhb, Movz, Movn,
     Syscall, Break, Sync,
     //Special2
-    Madd,
+    Madd, Maddu, Mul, Msub, Msubu, Clz, Clo, Sdbbp,
+    //Special3
+    Ext, Ins, Wsbh, Seb, Seh, Rdhwr,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -58,6 +60,10 @@ pub enum LmInstructionVersion{
     NoVersion, 
     _Mips32, _Mips32R2,
     _Mips64, _MipsR2
+}
+
+enum _LmInstructionException{
+    LmIntOverflowExcept, LmTrapExcept, 
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -74,13 +80,13 @@ pub struct LmInstruction{
     pub is_relative: bool,
     pub is_region: bool,
     pub operand_num: usize,
-    pub operand: [LmOperand; 3],    //L'ordre des opérandes suit celui du format en lettre 
+    pub operand: [LmOperand; 4],    //L'ordre des opérandes suit celui du format en lettre 
     pub version: LmInstructionVersion,
 }
 
 impl LmInstruction{
     pub fn get_memonic(mnemonic_id: LmMnemonicId) -> &'static str{
-        static MNEMONIC_TABLE: [&str; 59] = [
+        static MNEMONIC_TABLE: [&str; 72] = [
             LM_MNE_NO_MNEMONIC, LM_MNE_J, LM_MNE_JAL, LM_MNE_BEQ, LM_MNE_BNE, LM_MNE_BLEZ, LM_MNE_BGTZ, LM_MNE_ADDI, 
             LM_MNE_ADDIU, LM_MNE_SLTI, LM_MNE_SLTIU, LM_MNE_ANDI, LM_MNE_ORI, LM_MNE_XORI, LM_MNE_LUI, LM_MNE_BEQL, 
             LM_MNE_BNEL, LM_MNE_BLEZL, LM_MNE_BGTZL, LM_MNE_JALX, LM_MNE_LB, LM_MNE_LH, LM_MNE_LWL, LM_MNE_LW, 
@@ -92,7 +98,9 @@ impl LmInstruction{
             LM_MNE_JR, LM_MNE_JRHB, LM_MNE_JALR, LM_MNE_JALRHB, LM_MNE_MOVZ, LM_MNE_MOVN, LM_MNE_SYSCALL, LM_MNE_BREAK,
             LM_MNE_SYNC,
             //Special2
-            LM_MNE_MADD, 
+            LM_MNE_MADD, LM_MNE_MADDU, LM_MNE_MUL, LM_MNE_MSUB, LM_MNE_MSUBU, LM_MNE_CLZ, LM_MNE_CLO, LM_MNE_SDBBP,
+            //Special3
+            LM_MNE_EXT, LM_MNE_INS, LM_MNE_WSBH, LM_MNE_SEB, LM_MNE_SEH, LM_MNE_RDHWR,
         ];
         MNEMONIC_TABLE[mnemonic_id as usize]
     }
@@ -120,4 +128,9 @@ pub const LM_MNE_JRHB: &str = "jr.hb"; pub const LM_MNE_JALR: &str = "jalr"; pub
 pub const LM_MNE_MOVZ: &str = "movz"; pub const LM_MNE_MOVN: &str = "movn"; pub const LM_MNE_SYSCALL: &str = "syscall";
 pub const LM_MNE_BREAK: &str = "break"; pub const LM_MNE_SYNC: &str = "syn";
 //Special2
-pub const LM_MNE_MADD: &str = "madd";
+pub const LM_MNE_MADD: &str = "madd"; pub const LM_MNE_MADDU: &str = "maddu"; pub const LM_MNE_MUL: &str = "mul";
+pub const LM_MNE_MSUB: &str = "msub"; pub const LM_MNE_MSUBU: &str = "msubu"; pub const LM_MNE_CLZ: &str = "clz";
+pub const LM_MNE_CLO: &str = "clo"; pub const LM_MNE_SDBBP: &str = "sdbbp";
+//Special3
+pub const LM_MNE_EXT: &str = "ext"; pub const LM_MNE_INS: &str = "ins"; pub const LM_MNE_WSBH: &str = "wsbh";
+pub const LM_MNE_SEB: &str = "seb"; pub const LM_MNE_SEH: &str = "seh"; pub const LM_MNE_RDHWR: &str = "rdhwr";

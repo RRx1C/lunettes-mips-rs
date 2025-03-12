@@ -29,15 +29,15 @@ impl LmDisassembler{
     
     pub fn disassemble(&self, memory: u32, address: u64) -> Option<LmInstruction>{
         //Une map qui réunit tous les handlers des opcodes, il y a d'autre map dans cette map
-        const OPCODE_TABLE: [fn (instruction: &mut LmInstruction) -> bool; 64] = [
-            special_opcode_table, regimm_opcode_table, j, jal, beq, bne,  blez,  bgtz,
+        const OPCODE_MAP: [fn (instruction: &mut LmInstruction) -> bool; 64] = [
+            special_opcode_map, regimm_opcode_map, j, jal, beq, bne,  blez,  bgtz,
             addi,  addiu,  slti,  sltiu,  andi,  ori,  xori,  lui,
-            cop0_opcode_table,  cop1_opcode_table,  cop2_opcode_table,  cop1x_opcode_table,  beql,  bnel,  blezl,  bgtzl,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  special2_opcode_table,  jalx,  empty_opcode,  special3_opcode_table,
-            lb,  lh,  lwl,  lw,  lbu,  lhu,  lwr,  empty_opcode,
-            sb,  sh,  swl,  sw,  empty_opcode,  empty_opcode,  swr,  cache,
-            ll,  lwc1,  lwc2,  pref,  empty_opcode, ldc1, ldc2,  empty_opcode,
-            sc,  swc1,  swc2,  empty_opcode,  empty_opcode,  sdc1,  sdc2,  empty_opcode];
+            cop0_opcode_map,  cop1_opcode_map,  cop2_opcode_map,  cop1x_opcode_map,  beql,  bnel,  blezl,  bgtzl,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  special2_opcode_map,  jalx,  no_instructions,  special3_opcode_map,
+            lb,  lh,  lwl,  lw,  lbu,  lhu,  lwr,  no_instructions,
+            sb,  sh,  swl,  sw,  no_instructions,  no_instructions,  swr,  cache,
+            ll,  lwc1,  lwc2,  pref,  no_instructions, ldc1, ldc2,  no_instructions,
+            sc,  swc1,  swc2,  no_instructions,  no_instructions,  sdc1,  sdc2,  no_instructions];
 
         let mut instruction: LmInstruction = LmInstruction{
             function: LmInstructionFunction::NoFunction,
@@ -52,7 +52,7 @@ impl LmDisassembler{
                 _ => LmCoprocessor::Cpu,
             },
             machine_code: memory,
-            operand: [LmOperand::empty_operand(); 3],
+            operand: [LmOperand::empty_operand(); 4],
             is_relative: false,
             is_region: false,
             string: LmString::new_lmstring(),
@@ -62,7 +62,7 @@ impl LmDisassembler{
             version: LmInstructionVersion::NoVersion
         };
         
-        if !OPCODE_TABLE[(memory >> 26) as usize](&mut instruction) ||
+        if !OPCODE_MAP[(memory >> 26) as usize](&mut instruction) ||
             instruction.mnemonic_id == LmMnemonicId::NoMnemonic ||
             instruction.format == LmInstructionFormat::NoFormat ||
             instruction.function == LmInstructionFunction::NoFunction{
@@ -71,41 +71,38 @@ impl LmDisassembler{
         }
         return Some(instruction)
     }
-    fn reg_format(instruction: &mut LmInstruction, rs: usize, rt: usize, rd: usize, sa: usize) -> bool{
+    fn reg_format(instruction: &mut LmInstruction, rs: usize, rt: usize, rd: usize, sa: usize, ignore_field: u8) -> bool{
         let mut hex_num: LmString = LmString::new_lmstring();
         let comma: &str = ", ";
 
-        if rs < 4{
+        if (ignore_field & 8) == 0 && rs < 4{
             instruction.operand[rs] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 21 & 0b11111).unwrap(), LmCoprocessor::Cpu);
             instruction.operand_num += 1;
         }
         else if (instruction.machine_code >> 21 & 0b11111) != 0{
-                return false
+            return false
         }
-
-        if rt < 4{
+        if (ignore_field & 4) == 0 && rt < 4{
             instruction.operand[rt] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 16 & 0b11111).unwrap(), LmCoprocessor::Cpu);
             instruction.operand_num += 1;
         }
         else if (instruction.machine_code >> 16 & 0b11111) != 0{
-                return false
+            return false
         }
-
-        if rd < 4{
+        if (ignore_field & 2) == 0 && rd < 4{
             instruction.operand[rd] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 11 & 0b11111).unwrap(), LmCoprocessor::Cpu);
             instruction.operand_num += 1;
         }
         else if (instruction.machine_code >> 11 & 0b11111) != 0{
-                return false
+            return false
         }
-
-        if sa < 4{
+        if (ignore_field & 1) == 0 && sa < 4{
             instruction.operand[sa] = LmOperand::new_imm_opreand((instruction.machine_code >> 6 & 0b11111) as u64);
-        hex_num.num_to_str(instruction.operand[sa].value);
-        instruction.operand_num += 1;
+            hex_num.num_to_str(instruction.operand[sa].value);
+            instruction.operand_num += 1;
         }
         else if (instruction.machine_code >> 6 & 0b11111) != 0{
-                return false
+            return false
         }
 
         //Formatting the string
@@ -236,118 +233,116 @@ impl LmDisassembler{
 }
 
 //Opcode handlers map
-fn empty_opcode(_instruction: &mut LmInstruction) -> bool{
+fn no_instructions(_instruction: &mut LmInstruction) -> bool{
     false
 }
-fn special_opcode_table(instruction: &mut LmInstruction) -> bool{
-    static SPECIAL_TABLE: [fn(&mut LmInstruction) -> bool; 64] = [
-    sll,  empty_opcode,  empty_opcode,  sra,  sllv,  empty_opcode,  empty_opcode,  srav,
-    jr,  jalr,  movz,  movn,  syscall,  break_handler,  empty_opcode,  sync,
-    empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-    empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-    empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-    empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-    empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-    empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode ];
+fn special_opcode_map(instruction: &mut LmInstruction) -> bool{
+    static SPECIAL_MAP: [fn(&mut LmInstruction) -> bool; 64] = [
+    sll,  no_instructions,  no_instructions,  sra,  sllv,  no_instructions,  no_instructions,  srav,
+    jr,  jalr,  movz,  movn,  syscall,  break_handler,  no_instructions,  sync,
+    no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+    no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+    no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+    no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+    no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+    no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions ];
 
-    SPECIAL_TABLE[(instruction.machine_code & 0b11111) as usize](instruction)
+    SPECIAL_MAP[(instruction.machine_code & 0b111111) as usize](instruction)
 }
-fn regimm_opcode_table(_instruction: &mut LmInstruction) -> bool{
+fn regimm_opcode_map(_instruction: &mut LmInstruction) -> bool{
     static _REGIMM_TABLE: [fn(&mut LmInstruction) -> bool; 64] =
-        [   empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode ];
+        [   no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions ];
     unimplemented!("[-]Opcode map isn't implemented yet!");
     // REGIMM_TABLE[(instruction.machine_code >> 26) as usize](instruction)
 }
-fn special2_opcode_table(instruction: &mut LmInstruction) -> bool{
-    static SPECIAL2_TABLE: [fn(&mut LmInstruction) -> bool; 64] = 
-        [   madd,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode ];
+fn special2_opcode_map(instruction: &mut LmInstruction) -> bool{
+    static SPECIAL2_MAP: [fn(&mut LmInstruction) -> bool; 64] = 
+        [   madd,  maddu,  mul,  no_instructions,  msub,  msubu,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            clz,  clo,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  sdbbp ];
+    SPECIAL2_MAP[(instruction.machine_code & 0b111111) as usize](instruction)
+}
+fn special3_opcode_map(instruction: &mut LmInstruction) -> bool{
+    static SPECIAL3_MAP: [fn(&mut LmInstruction) -> bool; 64] = 
+        [   ext,  no_instructions,  no_instructions,  no_instructions,  ins,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            bshfl,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  rdhwr,  no_instructions,  no_instructions,  no_instructions,  no_instructions ];
     // unimplemented!("[-]Opcode map isn't implemented yet!");
-    SPECIAL2_TABLE[(instruction.machine_code & 0b11111) as usize](instruction)
+    SPECIAL3_MAP[(instruction.machine_code & 0b111111) as usize](instruction)
 }
-
-fn special3_opcode_table(_instruction: &mut LmInstruction) -> bool{
-    static _SPECIAL3_TABLE: [fn(&mut LmInstruction) -> bool; 64] = 
-        [   empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode ];
-    unimplemented!("[-]Opcode map isn't implemented yet!");
-    // SPECIAL3_TABLE[(instruction.machine_code >> 26) as usize](instruction)
-}
-fn cop0_opcode_table(_instruction: &mut LmInstruction) -> bool{
-    static _COP0_TABLE: [fn(&mut LmInstruction) -> bool; 64] =
-        [   empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-            empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode ];
+fn cop0_opcode_map(_instruction: &mut LmInstruction) -> bool{
+    static _COP0_MAP: [fn(&mut LmInstruction) -> bool; 64] =
+        [   no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+            no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions ];
     unimplemented!("[-]Opcode map isn't implemented yet!");
     // instruction.coprocessor = LmCoprocessor::Cp0;
-    // COP0_TABLE[(instruction.machine_code >> 26) as usize](instruction)
+    // COP0_MAP[(instruction.machine_code >> 26) as usize](instruction)
 }
-fn cop1_opcode_table(_instruction: &mut LmInstruction) -> bool{
-    static _COP1_TABLE: [fn(&mut LmInstruction) -> bool; 64] =
-    [   empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode ];
+fn cop1_opcode_map(_instruction: &mut LmInstruction) -> bool{
+    static _COP1_MAP: [fn(&mut LmInstruction) -> bool; 64] =
+    [   no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions ];
     unimplemented!("[-]Opcode map isn't implemented yet!");
 
     // instruction.coprocessor = LmCoprocessor::Cp1;
-    // COP1_TABLE[(instruction.machine_code >> 26) as usize](instruction)
+    // COP1_MAP[(instruction.machine_code >> 26) as usize](instruction)
 }
-fn cop2_opcode_table(_instruction: &mut LmInstruction) -> bool{
-    static _COP2_TABLE: [fn(&mut LmInstruction) -> bool; 64] = 
-    [   empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode ];
+fn cop2_opcode_map(_instruction: &mut LmInstruction) -> bool{
+    static _COP2_MAP: [fn(&mut LmInstruction) -> bool; 64] = 
+    [   no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions ];
     unimplemented!("[-]Opcode map isn't implemented yet!");
 
     // instruction.coprocessor = LmCoprocessor::Cp2;
-    // COP2_TABLE[(instruction.machine_code >> 26) as usize](instruction)
+    // COP2_MAP[(instruction.machine_code >> 26) as usize](instruction)
 }
-fn cop1x_opcode_table(_instruction: &mut LmInstruction) -> bool{
-    static _COP1X_TABLE: [fn(&mut LmInstruction) -> bool; 64] = 
-    [   empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,
-        empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode,  empty_opcode ];
+fn cop1x_opcode_map(_instruction: &mut LmInstruction) -> bool{
+    static _COP1X_MAP: [fn(&mut LmInstruction) -> bool; 64] = 
+    [   no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+        no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions ];
     unimplemented!("[-]Opcode map isn't implemented yet!");
 
     // instruction.coprocessor = LmCoprocessor::Cp1x;
-    // COP1X_TABLE[(instruction.machine_code >> 26) as usize](instruction)
+    // _COP1X_MAP[(instruction.machine_code >> 26) as usize](instruction)
 }

@@ -19,6 +19,18 @@ pub enum LmInstructionFunction{
     _Coprocessor
 }
 
+// pub struct LmJumpFields{
+// }
+// pub struct LmRegisterFields{
+// }
+// pub struct LmImmediateFields{
+// }
+// pub enum LmInstructionField{
+//     LmJumpFields(LmJumpFields),
+//     LmRegisterFields(LmRegisterFields),
+//     LmImmediateFields(LmImmediateFields)
+// }
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum LmCoprocessor{
     NoCoprocessor,
@@ -33,8 +45,12 @@ pub enum LmMnemonicId {
     NoMnemonic, J, Jal, Beq, Bne, Blez, Bgtz, Addi, Addiu, Slti, Sltiu, Andi,
     Ori, Xori, Lui, Beql, Bnel, Blezl, Bgtzl, Jalx, Lb, Lh, Lwl, Lw, Lbu, Lhu,
     Lwr, Sb, Sh, Swl, Sw, Swr, Cache, Ll, Lwc1, Lwc2, Pref, Ldc1, Ldc2, Sc,
-    Swc1, Swc2, Sdc1, Sdc2, Sll, Sra, Sllv, Srav, Jr, Jrhb, Jalr, Jalrhb, Movz, Movn,
-    Syscall, Break, Sync
+    Swc1, Swc2, Sdc1, Sdc2, 
+    //Special
+    Nop, Sll, Sra, Sllv, Srav, Jr, Jrhb, Jalr, Jalrhb, Movz, Movn,
+    Syscall, Break, Sync,
+    //Special2
+    Madd,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -64,15 +80,19 @@ pub struct LmInstruction{
 
 impl LmInstruction{
     pub fn get_memonic(mnemonic_id: LmMnemonicId) -> &'static str{
-        static MNEMONIC_TABLE: [&str; 57] = [
+        static MNEMONIC_TABLE: [&str; 59] = [
             LM_MNE_NO_MNEMONIC, LM_MNE_J, LM_MNE_JAL, LM_MNE_BEQ, LM_MNE_BNE, LM_MNE_BLEZ, LM_MNE_BGTZ, LM_MNE_ADDI, 
             LM_MNE_ADDIU, LM_MNE_SLTI, LM_MNE_SLTIU, LM_MNE_ANDI, LM_MNE_ORI, LM_MNE_XORI, LM_MNE_LUI, LM_MNE_BEQL, 
             LM_MNE_BNEL, LM_MNE_BLEZL, LM_MNE_BGTZL, LM_MNE_JALX, LM_MNE_LB, LM_MNE_LH, LM_MNE_LWL, LM_MNE_LW, 
             LM_MNE_LBU, LM_MNE_LHU, LM_MNE_LWR, LM_MNE_SB, LM_MNE_SH, LM_MNE_SWL, LM_MNE_SW, LM_MNE_SWR, 
             LM_MNE_CACHE, LM_MNE_LL, LM_MNE_LWC1, LM_MNE_LWC2, LM_MNE_PREF, LM_MNE_LDC1, LM_MNE_LDC2, LM_MNE_SC, 
-            LM_MNE_SWC1, LM_MNE_SWC2, LM_MNE_SDC1, LM_MNE_SDC2, LM_MNE_SLL, LM_MNE_SRA, LM_MNE_SLLV,LM_MNE_SRAV,
+            LM_MNE_SWC1, LM_MNE_SWC2, LM_MNE_SDC1, LM_MNE_SDC2, 
+            //Special
+            LM_MNE_NOP, LM_MNE_SLL, LM_MNE_SRA, LM_MNE_SLLV,LM_MNE_SRAV,
             LM_MNE_JR, LM_MNE_JRHB, LM_MNE_JALR, LM_MNE_JALRHB, LM_MNE_MOVZ, LM_MNE_MOVN, LM_MNE_SYSCALL, LM_MNE_BREAK,
-            LM_MNE_SYNC
+            LM_MNE_SYNC,
+            //Special2
+            LM_MNE_MADD, 
         ];
         MNEMONIC_TABLE[mnemonic_id as usize]
     }
@@ -92,8 +112,12 @@ pub const LM_MNE_SW: &str = "sw"; pub const LM_MNE_SWR: &str = "swr"; pub const 
 pub const LM_MNE_LL: &str = "ll"; pub const LM_MNE_LWC1: &str = "lwc1"; pub const LM_MNE_LWC2: &str = "lwc2";
 pub const LM_MNE_PREF: &str = "pref"; pub const LM_MNE_LDC1: &str = "ldc1"; pub const LM_MNE_LDC2: &str = "ldc2";
 pub const LM_MNE_SC: &str = "sc"; pub const LM_MNE_SWC1: &str = "swc1"; pub const LM_MNE_SWC2: &str = "swc2";
-pub const LM_MNE_SDC1: &str = "sdc1"; pub const LM_MNE_SDC2: &str = "sdc2"; pub const LM_MNE_SLL: &str = "sll";
-pub const LM_MNE_SRA: &str = "sra"; pub const LM_MNE_SLLV: &str = "sllv"; pub const LM_MNE_SRAV: &str = "srav";
-pub const LM_MNE_JR: &str = "jr"; pub const LM_MNE_JRHB: &str = "jr.hb"; pub const LM_MNE_JALR: &str = "jalr"; 
-pub const LM_MNE_JALRHB: &str = "jalr.hb"; pub const LM_MNE_MOVZ: &str = "movz"; pub const LM_MNE_MOVN: &str = "movn";
-pub const LM_MNE_SYSCALL: &str = "syscall"; pub const LM_MNE_BREAK: &str = "break"; pub const LM_MNE_SYNC: &str = "syn";
+pub const LM_MNE_SDC1: &str = "sdc1"; pub const LM_MNE_SDC2: &str = "sdc2";
+//Special
+pub const LM_MNE_NOP: &str = "nop"; pub const LM_MNE_SLL: &str = "sll"; pub const LM_MNE_SRA: &str = "sra";
+pub const LM_MNE_SLLV: &str = "sllv"; pub const LM_MNE_SRAV: &str = "srav"; pub const LM_MNE_JR: &str = "jr";
+pub const LM_MNE_JRHB: &str = "jr.hb"; pub const LM_MNE_JALR: &str = "jalr"; pub const LM_MNE_JALRHB: &str = "jalr.hb";
+pub const LM_MNE_MOVZ: &str = "movz"; pub const LM_MNE_MOVN: &str = "movn"; pub const LM_MNE_SYSCALL: &str = "syscall";
+pub const LM_MNE_BREAK: &str = "break"; pub const LM_MNE_SYNC: &str = "syn";
+//Special2
+pub const LM_MNE_MADD: &str = "madd";

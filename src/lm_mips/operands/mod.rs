@@ -5,9 +5,9 @@
 //Link to repo: https://github.com/RRx1C/lunettes-mips-rs
 
 pub mod registers;
-use crate::lm_mips::instruction::LmCoprocessor;
-use crate::lm_mips::operands::registers::*;
-use crate::lm_mips::instruction;
+use super::instruction::LmCoprocessor;
+use super::operands::registers::*;
+use super::instruction;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum LmOperandType{

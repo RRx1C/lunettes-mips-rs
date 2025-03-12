@@ -87,12 +87,8 @@ impl LmString{
         self.size = digit_num + 2;
         while digit_num > 0{
             match num & 0xf{
-                0..=9 => {
-                    let test = ((num & 0xf) + 0x30) as u8;
-                    self.buffer[digit_num + 1] = test as char},
-                _ => {
-                    let test = ((num & 0xf) + 0x57) as u8;
-                    self.buffer[digit_num + 1] = test as char}
+                0..=9 => self.buffer[digit_num + 1] = ((num & 0xf) + 0x30) as u8 as char,
+                _ => self.buffer[digit_num + 1] = ((num & 0xf) + 0x57) as u8 as char
             }
             num >>= 4;
             digit_num -=1;

@@ -45,10 +45,16 @@ pub enum LmInstructionVersion{
     _Mips32, _Mips32R2,
     _Mips64, _Mips64R2
 }
+
 #[derive(Clone, Debug, PartialEq)]
-pub enum _LmInstructionException{
+pub enum LmInstructionException{
     NoException = 0, _LmIntOverflowExcept = 1, _LmTrapExcept = 2, 
 }
+// impl LmInstructionException{
+//     pub fn or_assign(&mut self, me: Self) ->(){
+//         *self |= me;
+//     }
+// }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct LmInstruction{
@@ -58,7 +64,7 @@ pub struct LmInstruction{
     pub string: LmString,
     pub category: LmInstructionCategory,
     pub format: LmInstructionFormat,
-    pub exception: _LmInstructionException,
+    pub exception: LmInstructionException,
     pub address_size: LmAddressSize,
     pub coprocessor: LmCoprocessor,
     pub is_conditional: bool,
@@ -84,6 +90,7 @@ pub const LM_MNE_LL: &str = "ll"; pub const LM_MNE_LWC1: &str = "lwc1"; pub cons
 pub const LM_MNE_PREF: &str = "pref"; pub const LM_MNE_LDC1: &str = "ldc1"; pub const LM_MNE_LDC2: &str = "ldc2";
 pub const LM_MNE_SC: &str = "sc"; pub const LM_MNE_SWC1: &str = "swc1"; pub const LM_MNE_SWC2: &str = "swc2";
 pub const LM_MNE_SDC1: &str = "sdc1"; pub const LM_MNE_SDC2: &str = "sdc2";
+
 //Special
 pub const LM_MNE_NOP: &str = "nop"; pub const LM_MNE_SLL: &str = "sll"; pub const LM_MNE_SRA: &str = "sra";
 pub const LM_MNE_SLLV: &str = "sllv"; pub const LM_MNE_SRAV: &str = "srav"; pub const LM_MNE_JR: &str = "jr";
@@ -95,7 +102,9 @@ pub const LM_MNE_MULT: &str = "mult"; pub const LM_MNE_MULTU: &str = "multu"; pu
 pub const LM_MNE_DIVU: &str = "divu"; pub const LM_MNE_ADD: &str = "add"; pub const LM_MNE_ADDU: &str = "addu";
 pub const LM_MNE_SUB: &str = "sub"; pub const LM_MNE_SUBU: &str = "subu"; pub const LM_MNE_AND: &str = "and";
 pub const LM_MNE_OR: &str = "or"; pub const LM_MNE_XOR: &str = "xor"; pub const LM_MNE_NOR: &str = "nor";
-pub const LM_MNE_SLT: &str = "SLT"; pub const LM_MNE_SLTU: &str = "sltu";
+pub const LM_MNE_SLT: &str = "SLT"; pub const LM_MNE_SLTU: &str = "sltu"; pub const LM_MNE_TGE: &str = "tge";
+pub const LM_MNE_TGEU: &str = "tgeu"; pub const LM_MNE_TLT: &str = "tlt"; pub const LM_MNE_TLTU: &str = "tltu";
+pub const LM_MNE_TEQ: &str = "teq"; pub const LM_MNE_TNE: &str = "tne";
 
 //Special2
 pub const LM_MNE_MADD: &str = "madd"; pub const LM_MNE_MADDU: &str = "maddu"; pub const LM_MNE_MUL: &str = "mul";

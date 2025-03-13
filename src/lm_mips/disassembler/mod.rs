@@ -54,7 +54,7 @@ impl LmDisassembler{
             machine_code: memory,
             operand: [LmOperand::empty_operand(); 4],
             is_relative: false,
-            exception: _LmInstructionException::NoException,
+            exception: LmInstructionException::NoException,
             is_region: false,
             string: LmString::new_lmstring(),
             mnemonic: LM_MNE_NO_MNEMONIC,
@@ -244,7 +244,7 @@ fn special_opcode_map(instruction: &mut LmInstruction) -> bool{
     mult,  multu,  div,  divu,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
     add,  addu,  sub,  subu,  and,  or,  xor,  nor,
     no_instructions,  no_instructions,  slt,  sltu,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
-    no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+    tge,  tgeu,  tlt,  tltu,  teq,  no_instructions,  tne,  no_instructions,
     no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions ];
 
     SPECIAL_MAP[(instruction.machine_code & 0b111111) as usize](instruction)

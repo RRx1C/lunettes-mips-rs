@@ -54,16 +54,16 @@ impl LmDisassembler{
             machine_code: memory,
             operand: [LmOperand::empty_operand(); 4],
             is_relative: false,
+            exception: _LmInstructionException::NoException,
             is_region: false,
             string: LmString::new_lmstring(),
-            mnemonic_id: LmMnemonicId::NoMnemonic,
+            mnemonic: LM_MNE_NO_MNEMONIC,
             address,
             address_size: self.address_size,
             version: LmInstructionVersion::NoVersion
         };
         
         if !OPCODE_MAP[(memory >> 26) as usize](&mut instruction) ||
-            instruction.mnemonic_id == LmMnemonicId::NoMnemonic ||
             instruction.format == LmInstructionFormat::NoFormat ||
             instruction.function == LmInstructionFunction::NoFunction{
                 // println!("[-]Instruction couldn't be created for some reasons");
@@ -106,7 +106,7 @@ impl LmDisassembler{
         }
 
         //Formatting the string
-        instruction.string.append_str(LmInstruction::get_memonic(instruction.mnemonic_id));
+        instruction.string.append_str(instruction.mnemonic);
         instruction.string.append_char(' ');
         instruction.format = LmInstructionFormat::Reg;
         for i in 0..instruction.operand_num{
@@ -160,7 +160,7 @@ impl LmDisassembler{
         }
 
         //Formatting the string
-        instruction.string.append_str(LmInstruction::get_memonic(instruction.mnemonic_id));
+        instruction.string.append_str(instruction.mnemonic);    
         instruction.string.append_char(' ');
 
         //Adds first two operands to the string
@@ -215,7 +215,7 @@ impl LmDisassembler{
         //Formatting the string
         //If the branch/jump is relative, the string will show it's destination address instead of the offset
         hex_num.num_to_str(instruction.operand[0].value * 0x4 + instruction.address);
-        instruction.string.append_str(LmInstruction::get_memonic(instruction.mnemonic_id));
+        instruction.string.append_str(instruction.mnemonic);
         instruction.string.append_char(' ');
         instruction.string.append_string(&hex_num);
 

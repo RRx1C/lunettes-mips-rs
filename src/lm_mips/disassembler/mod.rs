@@ -40,7 +40,7 @@ impl LmDisassembler{
             sc,  swc1,  swc2,  no_instructions,  no_instructions,  sdc1,  sdc2,  no_instructions];
 
         let mut instruction: LmInstruction = LmInstruction{
-            function: LmInstructionFunction::NoFunction,
+            category: LmInstructionCategory::NoFunction,
             format: LmInstructionFormat::NoFormat,
             operand_num: 0,
             is_conditional: false,
@@ -65,7 +65,7 @@ impl LmDisassembler{
         
         if !OPCODE_MAP[(memory >> 26) as usize](&mut instruction) ||
             instruction.format == LmInstructionFormat::NoFormat ||
-            instruction.function == LmInstructionFunction::NoFunction{
+            instruction.category == LmInstructionCategory::NoFunction{
                 // println!("[-]Instruction couldn't be created for some reasons");
                 return None
         }
@@ -139,7 +139,7 @@ impl LmDisassembler{
         }
 
         if rt < 4{
-            if instruction.function != LmInstructionFunction::Miscellaneous{
+            if instruction.category != LmInstructionCategory::Priviledge && instruction.category != LmInstructionCategory::MemoryControl{
                 instruction.operand[rt] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 16 & 0b11111).unwrap(), coprocessor);
             }
             else{
@@ -164,7 +164,7 @@ impl LmDisassembler{
         instruction.string.append_char(' ');
 
         //Adds first two operands to the string
-        if instruction.function == LmInstructionFunction::Miscellaneous{
+        if instruction.category == LmInstructionCategory::Priviledge || instruction.category == LmInstructionCategory::MemoryControl{
             hex_num.num_to_str(instruction.operand[rt].value);
             instruction.string.append_string(&hex_num);
             operand_loop += 1;
@@ -185,8 +185,8 @@ impl LmDisassembler{
         if instruction.operand_num < 3{
             return true
         }
-        if instruction.function != LmInstructionFunction::LoadStore
-            && instruction.function != LmInstructionFunction::Miscellaneous{
+        if instruction.category != LmInstructionCategory::Load && instruction.category != LmInstructionCategory::Store
+            && instruction.category != LmInstructionCategory::Priviledge && instruction.category != LmInstructionCategory::MemoryControl{
             instruction.string.append_str(comma);
             if instruction.operand[2]._get_operand_type() == LmOperandType::Reg{
                 instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[2].get_register().unwrap(), instruction.operand[2].get_coprocessor()));
@@ -209,7 +209,7 @@ impl LmDisassembler{
         instruction.format = LmInstructionFormat::Jump;
         instruction.operand_num = 1 ;
         instruction.is_region = true;
-        instruction.function = LmInstructionFunction::BranchJump;
+        instruction.category = LmInstructionCategory::BranchJump;
         instruction.operand[0] = LmOperand::new_imm_opreand((instruction.machine_code & 0x3FFFFFF) as u64);
 
         //Formatting the string
@@ -240,10 +240,10 @@ fn special_opcode_map(instruction: &mut LmInstruction) -> bool{
     static SPECIAL_MAP: [fn(&mut LmInstruction) -> bool; 64] = [
     sll,  no_instructions,  no_instructions,  sra,  sllv,  no_instructions,  no_instructions,  srav,
     jr,  jalr,  movz,  movn,  syscall,  break_handler,  no_instructions,  sync,
-    no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
-    no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
-    no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
-    no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+    mfhi,  mthi,  mflo,  mtlo,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+    mult,  multu,  div,  divu,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
+    add,  addu,  sub,  subu,  and,  or,  xor,  nor,
+    no_instructions,  no_instructions,  slt,  sltu,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
     no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,
     no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions,  no_instructions ];
 

@@ -13,10 +13,12 @@ pub enum LmInstructionFormat{
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum LmInstructionFunction{
-    NoFunction, Computational, BranchJump,
-    LoadStore, Miscellaneous,
-    _Coprocessor
+pub enum LmInstructionCategory{
+    NoFunction, BranchJump, Load,
+    Store, Move, Priviledge,
+    Logical, Arithmetic, Control,
+    Trap, MemoryControl, Ejtag,
+    InsertExtract, Shift,
 }
 
 // pub struct LmJumpFields{
@@ -54,7 +56,7 @@ pub struct LmInstruction{
     pub mnemonic: &'static str,
     pub machine_code: u32,
     pub string: LmString,
-    pub function: LmInstructionFunction,
+    pub category: LmInstructionCategory,
     pub format: LmInstructionFormat,
     pub exception: _LmInstructionException,
     pub address_size: LmAddressSize,
@@ -87,7 +89,14 @@ pub const LM_MNE_NOP: &str = "nop"; pub const LM_MNE_SLL: &str = "sll"; pub cons
 pub const LM_MNE_SLLV: &str = "sllv"; pub const LM_MNE_SRAV: &str = "srav"; pub const LM_MNE_JR: &str = "jr";
 pub const LM_MNE_JRHB: &str = "jr.hb"; pub const LM_MNE_JALR: &str = "jalr"; pub const LM_MNE_JALRHB: &str = "jalr.hb";
 pub const LM_MNE_MOVZ: &str = "movz"; pub const LM_MNE_MOVN: &str = "movn"; pub const LM_MNE_SYSCALL: &str = "syscall";
-pub const LM_MNE_BREAK: &str = "break"; pub const LM_MNE_SYNC: &str = "syn";
+pub const LM_MNE_BREAK: &str = "break"; pub const LM_MNE_SYNC: &str = "syn"; pub const LM_MNE_MFHI: &str = "mfhi";
+pub const LM_MNE_MTHI: &str = "mthi"; pub const LM_MNE_MFLO: &str = "mflo"; pub const LM_MNE_MTLO: &str = "mtlo";
+pub const LM_MNE_MULT: &str = "mult"; pub const LM_MNE_MULTU: &str = "multu"; pub const LM_MNE_DIV: &str = "div";
+pub const LM_MNE_DIVU: &str = "divu"; pub const LM_MNE_ADD: &str = "add"; pub const LM_MNE_ADDU: &str = "addu";
+pub const LM_MNE_SUB: &str = "sub"; pub const LM_MNE_SUBU: &str = "subu"; pub const LM_MNE_AND: &str = "and";
+pub const LM_MNE_OR: &str = "or"; pub const LM_MNE_XOR: &str = "xor"; pub const LM_MNE_NOR: &str = "nor";
+pub const LM_MNE_SLT: &str = "SLT"; pub const LM_MNE_SLTU: &str = "sltu";
+
 //Special2
 pub const LM_MNE_MADD: &str = "madd"; pub const LM_MNE_MADDU: &str = "maddu"; pub const LM_MNE_MUL: &str = "mul";
 pub const LM_MNE_MSUB: &str = "msub"; pub const LM_MNE_MSUBU: &str = "msubu"; pub const LM_MNE_CLZ: &str = "clz";

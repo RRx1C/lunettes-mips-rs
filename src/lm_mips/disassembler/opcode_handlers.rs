@@ -54,7 +54,7 @@ pub fn bgtz(instruction: &mut LmInstruction) -> bool{
 }
 pub fn addi(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic = LM_MNE_ADDI;
-    // instruction.exception.or_assign(LmInstructionException::_LmIntOverflowExcept);
+    instruction.exception |= LmInstructionException::LmIntOverflowExcept;
     instruction.category = LmInstructionCategory::Arithmetic;
     return LmDisassembler::imm_format(instruction, LmCoprocessor::Cpu, 1, 0, 2);
 }
@@ -327,7 +327,7 @@ pub fn jalr(instruction: &mut LmInstruction) -> bool{
 pub fn movz(instruction: &mut LmInstruction) -> bool{
     instruction.category = LmInstructionCategory::Move;
     instruction.is_conditional = true;
-        instruction.mnemonic = LM_MNE_MOVZ;
+    instruction.mnemonic = LM_MNE_MOVZ;
     return LmDisassembler::reg_format(instruction, 1, 2, 0, 4, 0)
 }
 pub fn movn(instruction: &mut LmInstruction) -> bool{
@@ -339,8 +339,12 @@ pub fn movn(instruction: &mut LmInstruction) -> bool{
 pub fn syscall(instruction: &mut LmInstruction) -> bool{
     let mut hex_num: LmString = LmString::new_lmstring();
 
-    instruction.operand[0] = LmOperand::new_imm_opreand(((instruction.machine_code >> 6) & 0xFFFFF) as u64);
-    hex_num.num_to_str(instruction.operand[0].value);
+    instruction.operand[0] = LmOpImmediate::new_imm_opreand(((instruction.machine_code >> 6) & 0xFFFFF) as u64);
+
+    if let LmOperand::LmOpImmediate(imm) = instruction.operand[0]{
+        hex_num.num_to_str(imm.value);
+    };
+
     instruction.mnemonic = LM_MNE_SYSCALL;
     instruction.category = LmInstructionCategory::Trap;
     instruction.format = LmInstructionFormat::Other;
@@ -354,8 +358,12 @@ pub fn syscall(instruction: &mut LmInstruction) -> bool{
 pub fn break_handler(instruction: &mut LmInstruction) -> bool{
     let mut hex_num: LmString = LmString::new_lmstring();
 
-    instruction.operand[0] = LmOperand::new_imm_opreand(((instruction.machine_code >> 6) & 0xFFFFF) as u64);
-    hex_num.num_to_str(instruction.operand[0].value);
+    instruction.operand[0] = LmOpImmediate::new_imm_opreand(((instruction.machine_code >> 6) & 0xFFFFF) as u64);
+
+    if let LmOperand::LmOpImmediate(imm) = instruction.operand[0]{
+        hex_num.num_to_str(imm.value);
+    };
+    
     instruction.mnemonic = LM_MNE_BREAK;
     instruction.category = LmInstructionCategory::Trap;
     instruction.format = LmInstructionFormat::Other;
@@ -366,14 +374,27 @@ pub fn break_handler(instruction: &mut LmInstruction) -> bool{
     true
 }
 pub fn sync(instruction: &mut LmInstruction) -> bool{
-    if (instruction.machine_code >> 11 & 0xffff) != 0{
+    if (instruction.machine_code >> 11 & 0x7fff) != 0{
         return false
     }
+
+    let mut hex_num: LmString = LmString::new_lmstring();
+
+    //Setting the attributes
     instruction.category = LmInstructionCategory::MemoryControl;
     instruction.format = LmInstructionFormat::Other;
     instruction.mnemonic = LM_MNE_SYNC;
-    instruction.operand[0] = LmOperand::new_imm_opreand(((instruction.machine_code >> 6) & 0xFFFFF) as u64);
-    return LmDisassembler::reg_format(instruction, 4, 4, 4, 0, 0)
+    instruction.operand_num = 1;
+    instruction.operand[0] = LmOpImmediate::new_imm_opreand(((instruction.machine_code >> 6) & 0b11111) as u64);
+
+    //Formatting the string
+    if let LmOperand::LmOpImmediate(imm) = instruction.operand[0]{
+        hex_num.num_to_str(imm.value);
+    };
+    instruction.string.append_str(instruction.mnemonic);
+    instruction.string.append_char(' ');
+    instruction.string.append_string(&hex_num);
+    true
 }
 pub fn mfhi(instruction: &mut LmInstruction) -> bool{
     instruction.mnemonic = LM_MNE_MFHI;
@@ -471,150 +492,207 @@ pub fn tge(instruction: &mut LmInstruction) -> bool{
     let mut hex_num: LmString = LmString::new_lmstring();
     
     instruction.mnemonic = LM_MNE_TGE;
-    instruction.category = LmInstructionCategory::Trap;
     instruction.format = LmInstructionFormat::Other;
-
-    instruction.operand[0] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 21 & 0b11111).unwrap(), LmCoprocessor::Cpu);
-    instruction.operand[1] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 16 & 0b11111).unwrap(), LmCoprocessor::Cpu);
-    instruction.operand[2] = LmOperand::new_imm_opreand((instruction.machine_code >> 6 & 0b1111111111) as u64);
-
-
+    instruction.category = LmInstructionCategory::Trap;
     instruction.operand_num = 3;
-    hex_num.num_to_str(instruction.operand[2].value);
+    instruction.operand[0] = LmOpRegister::new_reg_opreand((instruction.machine_code >> 21 & 0b11111) as u8, LmCoprocessor::Cpu);
+    instruction.operand[1] = LmOpRegister::new_reg_opreand((instruction.machine_code >> 16 & 0b11111) as u8, LmCoprocessor::Cpu);
+    instruction.operand[2] = LmOpImmediate::new_imm_opreand((instruction.machine_code >> 6 & 0b1111111111) as u64);
+
+    let reg1 = match instruction.operand[0]{
+        LmOperand::LmOpRegister(reg1) => reg1,
+        _ => return false,
+    };
+    let reg2 = match instruction.operand[1]{
+        LmOperand::LmOpRegister(reg1) => reg1,
+        _ => return false,
+    };
+    if let LmOperand::LmOpImmediate(imm) = instruction.operand[2]{
+        hex_num.num_to_str(imm.value);
+    };
+
+    //Formatting
     instruction.string.append_str(instruction.mnemonic);
     instruction.string.append_str(" ");
-    instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[0].get_register().unwrap(), LmCoprocessor::Cpu));
+    instruction.string.append_str(reg1.register);
     instruction.string.append_str(", ");
-    instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[1].get_register().unwrap(), LmCoprocessor::Cpu));
+    instruction.string.append_str(reg2.register);
     instruction.string.append_str(", ");
     instruction.string.append_string(&hex_num);
-
     true
 }
 pub fn tgeu(instruction: &mut LmInstruction) -> bool{
     let mut hex_num: LmString = LmString::new_lmstring();
     
     instruction.mnemonic = LM_MNE_TGEU;
-    instruction.category = LmInstructionCategory::Trap;
     instruction.format = LmInstructionFormat::Other;
-
-    instruction.operand[0] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 21 & 0b11111).unwrap(), LmCoprocessor::Cpu);
-    instruction.operand[1] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 16 & 0b11111).unwrap(), LmCoprocessor::Cpu);
-    instruction.operand[2] = LmOperand::new_imm_opreand((instruction.machine_code >> 6 & 0b1111111111) as u64);
-
-
+    instruction.category = LmInstructionCategory::Trap;
     instruction.operand_num = 3;
-    hex_num.num_to_str(instruction.operand[2].value);
+    instruction.operand[0] = LmOpRegister::new_reg_opreand((instruction.machine_code >> 21 & 0b11111) as u8, LmCoprocessor::Cpu);
+    instruction.operand[1] = LmOpRegister::new_reg_opreand((instruction.machine_code >> 16 & 0b11111) as u8, LmCoprocessor::Cpu);
+    instruction.operand[2] = LmOpImmediate::new_imm_opreand((instruction.machine_code >> 6 & 0b1111111111) as u64);
+
+    let reg1 = match instruction.operand[0]{
+        LmOperand::LmOpRegister(reg1) => reg1,
+        _ => return false,
+    };
+    let reg2 = match instruction.operand[1]{
+        LmOperand::LmOpRegister(reg1) => reg1,
+        _ => return false,
+    };
+    if let LmOperand::LmOpImmediate(imm) = instruction.operand[2]{
+        hex_num.num_to_str(imm.value);
+    };
+
+    //Formatting
     instruction.string.append_str(instruction.mnemonic);
     instruction.string.append_str(" ");
-    instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[0].get_register().unwrap(), LmCoprocessor::Cpu));
+    instruction.string.append_str(reg1.register);
     instruction.string.append_str(", ");
-    instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[1].get_register().unwrap(), LmCoprocessor::Cpu));
+    instruction.string.append_str(reg2.register);
     instruction.string.append_str(", ");
     instruction.string.append_string(&hex_num);
-
     true
 }
 pub fn tlt(instruction: &mut LmInstruction) -> bool{
     let mut hex_num: LmString = LmString::new_lmstring();
     
     instruction.mnemonic = LM_MNE_TLT;
-    instruction.category = LmInstructionCategory::Trap;
     instruction.format = LmInstructionFormat::Other;
-
-    instruction.operand[0] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 21 & 0b11111).unwrap(), LmCoprocessor::Cpu);
-    instruction.operand[1] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 16 & 0b11111).unwrap(), LmCoprocessor::Cpu);
-    instruction.operand[2] = LmOperand::new_imm_opreand((instruction.machine_code >> 6 & 0b1111111111) as u64);
-
-
+    instruction.category = LmInstructionCategory::Trap;
     instruction.operand_num = 3;
-    hex_num.num_to_str(instruction.operand[2].value);
+    instruction.operand[0] = LmOpRegister::new_reg_opreand((instruction.machine_code >> 21 & 0b11111) as u8, LmCoprocessor::Cpu);
+    instruction.operand[1] = LmOpRegister::new_reg_opreand((instruction.machine_code >> 16 & 0b11111) as u8, LmCoprocessor::Cpu);
+    instruction.operand[2] = LmOpImmediate::new_imm_opreand((instruction.machine_code >> 6 & 0b1111111111) as u64);
+
+    let reg1 = match instruction.operand[0]{
+        LmOperand::LmOpRegister(reg1) => reg1,
+        _ => return false,
+    };
+    let reg2 = match instruction.operand[1]{
+        LmOperand::LmOpRegister(reg1) => reg1,
+        _ => return false,
+    };
+    if let LmOperand::LmOpImmediate(imm) = instruction.operand[2]{
+        hex_num.num_to_str(imm.value);
+    };
+
+    //Formatting
     instruction.string.append_str(instruction.mnemonic);
     instruction.string.append_str(" ");
-    instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[0].get_register().unwrap(), LmCoprocessor::Cpu));
+    instruction.string.append_str(reg1.register);
     instruction.string.append_str(", ");
-    instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[1].get_register().unwrap(), LmCoprocessor::Cpu));
+    instruction.string.append_str(reg2.register);
     instruction.string.append_str(", ");
     instruction.string.append_string(&hex_num);
-
     true
 }
 pub fn tltu(instruction: &mut LmInstruction) -> bool{
     let mut hex_num: LmString = LmString::new_lmstring();
     
     instruction.mnemonic = LM_MNE_TLTU;
-    instruction.category = LmInstructionCategory::Trap;
     instruction.format = LmInstructionFormat::Other;
-
-    instruction.operand[0] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 21 & 0b11111).unwrap(), LmCoprocessor::Cpu);
-    instruction.operand[1] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 16 & 0b11111).unwrap(), LmCoprocessor::Cpu);
-    instruction.operand[2] = LmOperand::new_imm_opreand((instruction.machine_code >> 6 & 0b1111111111) as u64);
-
-
+    instruction.category = LmInstructionCategory::Trap;
     instruction.operand_num = 3;
-    hex_num.num_to_str(instruction.operand[2].value);
+    instruction.operand[0] = LmOpRegister::new_reg_opreand((instruction.machine_code >> 21 & 0b11111) as u8, LmCoprocessor::Cpu);
+    instruction.operand[1] = LmOpRegister::new_reg_opreand((instruction.machine_code >> 16 & 0b11111) as u8, LmCoprocessor::Cpu);
+    instruction.operand[2] = LmOpImmediate::new_imm_opreand((instruction.machine_code >> 6 & 0b1111111111) as u64);
+
+    let reg1 = match instruction.operand[0]{
+        LmOperand::LmOpRegister(reg1) => reg1,
+        _ => return false,
+    };
+    let reg2 = match instruction.operand[1]{
+        LmOperand::LmOpRegister(reg1) => reg1,
+        _ => return false,
+    };
+    if let LmOperand::LmOpImmediate(imm) = instruction.operand[2]{
+        hex_num.num_to_str(imm.value);
+    };
+
+    //Formatting
     instruction.string.append_str(instruction.mnemonic);
     instruction.string.append_str(" ");
-    instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[0].get_register().unwrap(), LmCoprocessor::Cpu));
+    instruction.string.append_str(reg1.register);
     instruction.string.append_str(", ");
-    instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[1].get_register().unwrap(), LmCoprocessor::Cpu));
+    instruction.string.append_str(reg2.register);
     instruction.string.append_str(", ");
     instruction.string.append_string(&hex_num);
-
     true
 }
 pub fn teq(instruction: &mut LmInstruction) -> bool{
     let mut hex_num: LmString = LmString::new_lmstring();
     
     instruction.mnemonic = LM_MNE_TEQ;
-    instruction.category = LmInstructionCategory::Trap;
     instruction.format = LmInstructionFormat::Other;
-
-    instruction.operand[0] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 21 & 0b11111).unwrap(), LmCoprocessor::Cpu);
-    instruction.operand[1] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 16 & 0b11111).unwrap(), LmCoprocessor::Cpu);
-    instruction.operand[2] = LmOperand::new_imm_opreand((instruction.machine_code >> 6 & 0b1111111111) as u64);
-
-
+    instruction.category = LmInstructionCategory::Trap;
     instruction.operand_num = 3;
-    hex_num.num_to_str(instruction.operand[2].value);
+    instruction.operand[0] = LmOpRegister::new_reg_opreand((instruction.machine_code >> 21 & 0b11111) as u8, LmCoprocessor::Cpu);
+    instruction.operand[1] = LmOpRegister::new_reg_opreand((instruction.machine_code >> 16 & 0b11111) as u8, LmCoprocessor::Cpu);
+    instruction.operand[2] = LmOpImmediate::new_imm_opreand((instruction.machine_code >> 6 & 0b1111111111) as u64);
+
+    let reg1 = match instruction.operand[0]{
+        LmOperand::LmOpRegister(reg1) => reg1,
+        _ => return false,
+    };
+    let reg2 = match instruction.operand[1]{
+        LmOperand::LmOpRegister(reg1) => reg1,
+        _ => return false,
+    };
+    if let LmOperand::LmOpImmediate(imm) = instruction.operand[2]{
+        hex_num.num_to_str(imm.value);
+    };
+
+    //Formatting
     instruction.string.append_str(instruction.mnemonic);
     instruction.string.append_str(" ");
-    instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[0].get_register().unwrap(), LmCoprocessor::Cpu));
+    instruction.string.append_str(reg1.register);
     instruction.string.append_str(", ");
-    instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[1].get_register().unwrap(), LmCoprocessor::Cpu));
+    instruction.string.append_str(reg2.register);
     instruction.string.append_str(", ");
     instruction.string.append_string(&hex_num);
-
     true
-    
 }
 pub fn tne(instruction: &mut LmInstruction) -> bool{
-        instruction.format = LmInstructionFormat::Other;
-        let mut hex_num: LmString = LmString::new_lmstring();
+    //Function variable
+    let mut hex_num: LmString = LmString::new_lmstring();
+
+    //Attributes
     instruction.mnemonic = LM_MNE_TNE;
+    instruction.format = LmInstructionFormat::Other;
     instruction.category = LmInstructionCategory::Trap;
-    instruction.operand[2] = LmOperand::new_imm_opreand((instruction.machine_code >> 6 & 0b1111111111) as u64);
-
-
-    instruction.operand[0] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 21 & 0b11111).unwrap(), LmCoprocessor::Cpu);
-    instruction.operand[1] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 16 & 0b11111).unwrap(), LmCoprocessor::Cpu);
-
     instruction.operand_num = 3;
-    hex_num.num_to_str(instruction.operand[2].value);
+    instruction.operand[0] = LmOpRegister::new_reg_opreand((instruction.machine_code >> 21 & 0b11111) as u8, LmCoprocessor::Cpu);
+    instruction.operand[1] = LmOpRegister::new_reg_opreand((instruction.machine_code >> 16 & 0b11111) as u8, LmCoprocessor::Cpu);
+    instruction.operand[2] = LmOpImmediate::new_imm_opreand((instruction.machine_code >> 6 & 0b1111111111) as u64);
+
+    let reg1 = match instruction.operand[0]{
+        LmOperand::LmOpRegister(reg1) => reg1,
+        _ => return false,
+    };
+    let reg2 = match instruction.operand[1]{
+        LmOperand::LmOpRegister(reg1) => reg1,
+        _ => return false,
+    };
+    if let LmOperand::LmOpImmediate(imm) = instruction.operand[2]{
+        hex_num.num_to_str(imm.value);
+    };
+
+    //Formatting
     instruction.string.append_str(instruction.mnemonic);
     instruction.string.append_str(" ");
-    instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[0].get_register().unwrap(), LmCoprocessor::Cpu));
+    instruction.string.append_str(reg1.register);
     instruction.string.append_str(", ");
-    instruction.string.append_str(LmOperand::get_reg_str(instruction.operand[1].get_register().unwrap(), LmCoprocessor::Cpu));
+    instruction.string.append_str(reg2.register);
     instruction.string.append_str(", ");
     instruction.string.append_string(&hex_num);
     true
 }
-
 
 //Special2
 pub fn madd(instruction: &mut LmInstruction) -> bool{
     instruction.category = LmInstructionCategory::Arithmetic;
+    instruction.exception |= LmInstructionException::LmIntOverflowExcept;
     instruction.mnemonic = LM_MNE_MADD;
     LmDisassembler::reg_format(instruction, 0, 1, 4, 4, 0)
 }

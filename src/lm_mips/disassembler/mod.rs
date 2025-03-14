@@ -19,6 +19,15 @@ pub struct LmDisassembler{
     pub _version: LmInstructionVersion
 }
 
+struct FieldInfos{
+    size: usize,                    //The number of bits this field takes
+    op_type: LmOperandType,         //Defines the type of this operand, if there's no type, the field 
+                                    //reprsented by this struct should be skipped
+    coprocessor: LmCoprocessor,     //Defines the coprocessor of the register if op_type a register
+    blank: bool,                    //Means that the field is supposed to be 0x00
+    operand_order: usize,           //Order of operand in the instruction string
+}
+
 impl LmDisassembler{
     pub fn new_disassembler(address_size: LmAddressSize) -> LmDisassembler{
         LmDisassembler{
@@ -26,7 +35,6 @@ impl LmDisassembler{
             _version: LmInstructionVersion::NoVersion,
         }
     }
-    
     pub fn disassemble(&self, memory: u32, address: u64) -> Option<LmInstruction>{
         //Une map qui réunit tous les handlers des opcodes, il y a d'autre map dans cette map
         const OPCODE_MAP: [fn (instruction: &mut LmInstruction) -> bool; 64] = [
@@ -52,7 +60,7 @@ impl LmDisassembler{
                 _ => LmCoprocessor::Cpu,
             },
             machine_code: memory,
-            operand: [LmOperand::empty_operand(); 4],
+            operand: [LmOperand::LmOpEmty(LmOpEmty{}); 4],
             is_relative: false,
             exception: LmInstructionException::NoException,
             is_region: false,
@@ -66,7 +74,7 @@ impl LmDisassembler{
         if !OPCODE_MAP[(memory >> 26) as usize](&mut instruction) ||
             instruction.format == LmInstructionFormat::NoFormat ||
             instruction.category == LmInstructionCategory::NoFunction{
-                // println!("[-]Instruction couldn't be created for some reasons");
+                //println!("[-]Instruction couldn't be created for some reasons");
                 return None
         }
         return Some(instruction)
@@ -76,14 +84,14 @@ impl LmDisassembler{
         let comma: &str = ", ";
 
         if (ignore_field & 8) == 0 && rs < 4{
-            instruction.operand[rs] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 21 & 0b11111).unwrap(), LmCoprocessor::Cpu);
+            instruction.operand[rs] = LmOpRegister::new_reg_opreand((instruction.machine_code >> 21 & 0b11111) as u8, LmCoprocessor::Cpu);
             instruction.operand_num += 1;
         }
         else if (instruction.machine_code >> 21 & 0b11111) != 0{
             return false
         }
         if (ignore_field & 4) == 0 && rt < 4{
-            instruction.operand[rt] = LmOperand::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 16 & 0b11111).unwrap(), LmCoprocessor::Cpu);
+            instruction.operand[rt] = LmOpRegister::new_reg_opreand(LmDisassembler::u32_to_register(instruction.machine_code >> 16 & 0b11111).unwrap(), LmCoprocessor::Cpu);
             instruction.operand_num += 1;
         }
         else if (instruction.machine_code >> 16 & 0b11111) != 0{
@@ -122,6 +130,86 @@ impl LmDisassembler{
         }
 
         true
+    }
+    fn _reg_format(instruction: &mut LmInstruction, rs: &FieldInfos, rt: &FieldInfos, rd: &FieldInfos, sa: &FieldInfos){
+        let mut hex_num: LmString = LmString::new_lmstring();
+        let mut field_mask = 0b11111;
+        let comma: &str = ", ";
+
+        if rs.size != 5{
+            field_mask <<= 1;
+            field_mask |= 1;
+        }
+        instruction.operand[rs.operand_order] = match rs.op_type{
+            LmOperandType::Reg => {
+                instruction.operand_num += 1;
+                LmOpRegister::new_reg_opreand((instruction.machine_code >> 21 & field_mask) as u8, rs.coprocessor)},
+            LmOperandType::Imm => {
+                instruction.operand_num += 1;
+                LmOpImmediate::new_imm_opreand((instruction.machine_code >> 21 & field_mask) as u64)},
+            _ => instruction.operand[rs.operand_order],
+        };
+        field_mask = 0b11111;
+
+        if rt.size != 5{
+            field_mask <<= 1;
+            field_mask |= 1;
+        }
+        instruction.operand[rt.operand_order] = match rt.op_type{
+            LmOperandType::Reg => {
+                instruction.operand_num += 1;
+                LmOpRegister::new_reg_opreand((instruction.machine_code >> 21 & field_mask) as u8, rt.coprocessor)},
+            LmOperandType::Imm => {
+                instruction.operand_num += 1;
+                LmOpImmediate::new_imm_opreand((instruction.machine_code >> 21 & field_mask) as u64)},
+            _ => instruction.operand[rt.operand_order],
+        };
+        field_mask = 0b11111;
+
+        if rd.size != 5{
+            field_mask <<= 1;
+            field_mask |= 1;
+        }
+        instruction.operand[rd.operand_order] = match rd.op_type{
+            LmOperandType::Reg => {
+                instruction.operand_num += 1;
+                LmOpRegister::new_reg_opreand((instruction.machine_code >> 21 & field_mask) as u8, rd.coprocessor)},
+            LmOperandType::Imm => {
+                instruction.operand_num += 1;
+                LmOpImmediate::new_imm_opreand((instruction.machine_code >> 21 & field_mask) as u64)},
+            _ => instruction.operand[rd.operand_order],
+        };
+        field_mask = 0b11111;
+
+        if sa.size != 5{
+            field_mask <<= 1;
+            field_mask |= 1;
+        }
+        instruction.operand[sa.operand_order] = match sa.op_type{
+            LmOperandType::Reg => {
+                instruction.operand_num += 1;
+                LmOpRegister::new_reg_opreand((instruction.machine_code >> 21 & field_mask) as u8, sa.coprocessor)},
+            LmOperandType::Imm => {
+                instruction.operand_num += 1;
+                LmOpImmediate::new_imm_opreand((instruction.machine_code >> 21 & field_mask) as u64)},
+            _ => instruction.operand[sa.operand_order],
+        };
+
+        for i in 0..instruction.operand_num{
+            match instruction.operand[i]{
+                LmOperand::LmOpRegister(reg) => instruction.string.append_str(&reg.register),
+                LmOperand::LmOpImmediate(imm) =>{
+                    hex_num.num_to_str(imm.value);
+                    instruction.string.append_string(&hex_num);
+                },
+                _ => {}
+            }
+
+            if instruction.operand_num - 1 > i{
+                instruction.string.append_str(&comma);
+            }
+        }
+
     }
     fn imm_format(instruction: &mut LmInstruction, coprocessor: LmCoprocessor, rs: usize, rt: usize, imm: usize) -> bool{
         let mut hex_num: LmString = LmString::new_lmstring();

@@ -6,6 +6,7 @@
 use super::LmAddressSize;
 use super::operands::*;
 use super::utils::string::LmString;
+use core::ops::BitOrAssign;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum LmInstructionFormat{
@@ -48,13 +49,13 @@ pub enum LmInstructionVersion{
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum LmInstructionException{
-    NoException = 0, _LmIntOverflowExcept = 1, _LmTrapExcept = 2, 
+    NoException = 0, LmIntOverflowExcept = 1, _LmTrapExcept = 2, 
 }
-// impl LmInstructionException{
-//     pub fn or_assign(&mut self, me: Self) ->(){
-//         *self |= me;
-//     }
-// }
+impl BitOrAssign for LmInstructionException{
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self |= rhs;
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct LmInstruction{
